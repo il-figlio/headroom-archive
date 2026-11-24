@@ -89,7 +89,9 @@ Builds up to 0.8.0 (13) used private updates. Their behavior:
 - They poll the **same** feed URL, sending `Authorization: Bearer <gh token>`, which still works once the repository is public.
 - They require a working `gh auth login` before the updater even starts.
 - They accept **only** enclosures of the form `https://api.github.com/repos/il-figlio/headroom/releases/assets/<numeric id>`, downloaded with the gh token and `Accept: application/octet-stream`.
-- They require a feed signed with the same EdDSA key, which is unchanged.
+- They require a feed signed with the EdDSA key they shipped with. **That key was rotated on 2026-11-24** (the original private key wasn't available), so these builds can't verify any public release. The bridge below is kept for reference only.
+
+**Current guidance:** Macs running 0.8.0 or earlier install 0.9.0 once by hand from the DMG. Don't set `HEADROOM_LEGACY_BRIDGE`.
 
 A feed that encloses the new public `github.com/.../releases/download/...` URL is **rejected** by these builds: "The update does not point to a Headroom release asset." So the first public release is a bridge release:
 
@@ -112,9 +114,9 @@ Create an environment named **`release`** under Settings → Environments. Add y
 | `HEADROOM_NOTARY_KEY_P8` | env secret | Contents of an App Store Connect API key file. In App Store Connect, open Users and Access → Integrations → App Store Connect API → Team Keys and generate a key with the Developer role. `AuthKey_<KEYID>.p8` can be downloaded only once. Run `gh secret set HEADROOM_NOTARY_KEY_P8 --env release < AuthKey_<KEYID>.p8`. |
 | `HEADROOM_NOTARY_KEY_ID` | env secret | That key's Key ID. |
 | `HEADROOM_NOTARY_ISSUER` | env secret | The Issuer ID (UUID) shown above the key list. |
-| `HEADROOM_SPARKLE_ED_KEY` | env secret | The existing Sparkle private key. Never generate a new one for this release stream. Run `.build-headroom/sparkle-tools/bin/generate_keys --account org.headroom.app -x sparkle-key.txt && gh secret set HEADROOM_SPARKLE_ED_KEY --env release < sparkle-key.txt && rm sparkle-key.txt`. The Keychain copy stays as the backup. CI pipes it to `sign_update --ed-key-file -`, so it is never written to disk. |
+| `HEADROOM_SPARKLE_ED_KEY` | env secret | The Sparkle private key (generated 2026-11-24, public key in `packaging/app.env`). Back it up in a password manager; losing it means users can't verify updates. Never generate another one for this release stream. Run `.build-headroom/sparkle-tools/bin/generate_keys --account org.headroom.app -x sparkle-key.txt && gh secret set HEADROOM_SPARKLE_ED_KEY --env release < sparkle-key.txt && rm sparkle-key.txt`. The Keychain copy stays as the backup. CI pipes it to `sign_update --ed-key-file -`, so it is never written to disk. |
 | `HEADROOM_SIGN_IDENTITY` | env or repo variable | The full identity name, for example `Developer ID Application: <Name> (<TEAMID>)` (`security find-identity -v -p codesigning`). |
-| `HEADROOM_LEGACY_BRIDGE` | repo variable | `true` for the 0.9.0 bridge release only. Delete it afterwards. |
+| `HEADROOM_LEGACY_BRIDGE` | repo variable | Unused since the 2026-11-24 key rotation. Leave unset. |
 
 `GITHUB_TOKEN` creates the draft release. No personal token is needed. Leave the default workflow permissions read-only; the release job asks for `contents: write` itself. Locally, the same `HEADROOM_NOTARY_*` and `HEADROOM_SPARKLE_ED_KEY` (or `--ed-key-file`) variables work, and without them the scripts use the Keychain.
 
