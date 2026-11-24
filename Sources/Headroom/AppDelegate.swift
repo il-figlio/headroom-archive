@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         if let icon = AppBrand.icon { NSApp.applicationIconImage = icon }
         status = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         status.button?.target = self; status.button?.action = #selector(togglePanel)
-        status.button?.image = AppBrand.menuIcon() ?? NSImage(systemSymbolName: "memorychip", accessibilityDescription: "Headroom")
+        status.button?.image = StatusIndicator.image()
         status.button?.imagePosition = .imageLeading
         popover.behavior = .applicationDefined; popover.animates = false; popover.delegate = self
         popover.contentSize = PanelMetrics.size()
@@ -85,16 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         } else { status.isVisible = true }
     }
     private func updateIndicator() {
-        let text = NSMutableAttributedString(string: "  ● ", attributes: [.foregroundColor: monitor.memory.pressure.color, .font: NSFont.systemFont(ofSize: 10)])
-        text.append(NSAttributedString(string: monitor.memory.valid ? MemoryFormat.compact(monitor.memory.used) : "—",
-                                       attributes: [.foregroundColor: NSColor.labelColor, .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)]))
-        // Disk only earns menu-bar space when it's genuinely getting tight.
-        if monitor.disk.valid && monitor.disk.urgency != .ample {
-            text.append(NSAttributedString(string: "  ● ", attributes: [.foregroundColor: monitor.disk.urgency.color, .font: NSFont.systemFont(ofSize: 10)]))
-            text.append(NSAttributedString(string: MemoryFormat.compact(monitor.disk.free),
-                                           attributes: [.foregroundColor: NSColor.labelColor, .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)]))
-        }
-        status.button?.attributedTitle = text
+        status.button?.attributedTitle = StatusIndicator.title(for: monitor)
         status.button?.toolTip = "Headroom · \(monitor.memory.pressure.title) pressure · \(MemoryFormat.string(monitor.memory.swap)) swap · \(MemoryFormat.string(monitor.disk.free)) disk free"
         status.button?.setAccessibilityLabel("Headroom, \(monitor.memory.pressure.title) memory pressure")
     }
@@ -211,5 +202,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         eventMonitors.forEach(NSEvent.removeMonitor)
         notch?.dispose()
         monitor?.refreshLogBeforeQuit()
+    }
+}
+
+/// The menu-bar status item's title, shared with the screenshot scenes.
+enum StatusIndicator {
+    static func image() -> NSImage? {
+        AppBrand.menuIcon() ?? NSImage(systemSymbolName: "memorychip", accessibilityDescription: "Headroom")
+    }
+    static func title(for monitor: MemoryMonitor) -> NSAttributedString {
+        let text = NSMutableAttributedString(string: "  ● ", attributes: [.foregroundColor: monitor.memory.pressure.color, .font: NSFont.systemFont(ofSize: 10)])
+        text.append(NSAttributedString(string: monitor.memory.valid ? MemoryFormat.compact(monitor.memory.used) : "—",
+                                       attributes: [.foregroundColor: NSColor.labelColor, .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)]))
+        // Disk only earns menu-bar space when it's genuinely getting tight.
+        if monitor.disk.valid && monitor.disk.urgency != .ample {
+            text.append(NSAttributedString(string: "  ● ", attributes: [.foregroundColor: monitor.disk.urgency.color, .font: NSFont.systemFont(ofSize: 10)]))
+            text.append(NSAttributedString(string: MemoryFormat.compact(monitor.disk.free),
+                                           attributes: [.foregroundColor: NSColor.labelColor, .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)]))
+        }
+        return text
     }
 }

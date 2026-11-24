@@ -24,6 +24,7 @@ enum ScreenshotExport {
                    title: "Menu bar panel", to: directory.appendingPathComponent("menubar-panel-v1.png"))
         try render(HistoryView(monitor: monitor), size: NSSize(width: 760, height: 1200),
                    title: "Trends & recommendations", to: directory.appendingPathComponent("trends-v2.png"))
+        try ScreenshotScenes.render(directory: directory)
         guard CommandLine.arguments.contains("--screenshot-variants") else { return }
         try renderVariants(monitor: monitor, directory: directory)
     }
@@ -143,10 +144,13 @@ enum ScreenshotExport {
         try render(content.background(Color(nsColor: .windowBackgroundColor)), size: size, scheme: scheme, title: title, to: url)
     }
 
-    private static func render<V: View>(_ content: V, size: NSSize, scheme: ColorScheme = .dark, title: String, to url: URL) throws {
+    /// `title` names the render in its caption; nil leaves just "Demo data".
+    /// `scale` overrides `--screenshot-scale` for renders that always ship at 2x.
+    static func render<V: View>(_ content: V, size: NSSize, scheme: ColorScheme = .dark, title: String?,
+                                scale fixedScale: Double? = nil, to url: URL) throws {
         let root = VStack(spacing: 14) {
             content.frame(width: size.width, height: size.height).clipShape(RoundedRectangle(cornerRadius: 16))
-            Text("\(title) · Demo data").font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+            Text(title.map { "\($0) · Demo data" } ?? "Demo data").font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
         }.padding(24).background(scheme == .dark ? Color(red: 0.085, green: 0.09, blue: 0.10) : Color(red: 0.86, green: 0.87, blue: 0.89))
             .environment(\.colorScheme, scheme)
         let frame = NSRect(x: -12000, y: -12000, width: size.width + 48, height: size.height + 74)
@@ -160,7 +164,7 @@ enum ScreenshotExport {
         host.layoutSubtreeIfNeeded()
         // `--screenshot-scale 2` renders Retina-density PNGs for review.
         let scaleIndex = CommandLine.arguments.firstIndex(of: "--screenshot-scale")
-        let scale = scaleIndex.flatMap { CommandLine.arguments.count > $0 + 1 ? Double(CommandLine.arguments[$0 + 1]) : nil } ?? 1
+        let scale = fixedScale ?? scaleIndex.flatMap { CommandLine.arguments.count > $0 + 1 ? Double(CommandLine.arguments[$0 + 1]) : nil } ?? 1
         let bitmap: NSBitmapImageRep
         if scale > 1, let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(host.bounds.width * scale),
                                                   pixelsHigh: Int(host.bounds.height * scale), bitsPerSample: 8,
