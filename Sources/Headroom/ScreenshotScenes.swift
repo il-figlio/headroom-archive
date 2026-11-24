@@ -87,7 +87,7 @@ private struct DesktopScene: View {
         ZStack(alignment: .topLeading) {
             Wallpaper.desktop.view(size: Self.size)
             MenuBarStrip(height: Self.menuBar) {
-                EmptyView()
+                MenuTitles(app: "Finder", menus: ["File", "Edit", "View", "Window", "Help"])
             } trailing: {
                 HStack(spacing: Self.itemSpacing) {
                     StatusItemButton(monitor: monitor).frame(width: item.width, height: Self.menuBar)
