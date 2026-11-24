@@ -601,7 +601,7 @@ public final class HistoryStore {
             let purgeText = (summary.latestDiskPurgeable ?? 0) > 0 ? " · \(MemoryFormat.string(summary.latestDiskPurgeable!)) purgeable" : ""
             lines.append("- \(MemoryFormat.string(free)) free of \(MemoryFormat.string(total)) · \(Int(Double(used) / Double(total) * 100))% full\(purgeText).")
             if let rate = summary.diskRateGBPerDay, rate > 0.1 {
-                var trend = "- Free space shrank by about \(String(format: "%.1f", rate)) GB/day across the recorded window."
+                var trend = "- Free space shrank by about \(MemoryFormat.perDay(gb: rate)) across the recorded window."
                 if let days = summary.daysUntilFull { trend += " At that pace it runs out in about \(Int(days.rounded(.up))) day(s)." }
                 lines.append(trend)
             } else if summary.diskRateGBPerDay != nil {

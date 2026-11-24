@@ -191,7 +191,7 @@ public enum DiskAdvice {
         }
         if let days = summary.daysUntilFull, days > 0, days < 14, let rate = summary.diskRateGBPerDay, rate > 0.1 {
             result.append(.init(title: "Disk is filling quickly",
-                                detail: "Free space shrank by about \(String(format: "%.1f", rate)) GB/day over the recorded window; at that pace it runs out in roughly \(Int(days.rounded(.up))) day(s). Check the largest consumers below."))
+                                detail: "Free space shrank by about \(MemoryFormat.perDay(gb: rate)) over the recorded window; at that pace it runs out in roughly \(Int(days.rounded(.up))) day(s). Check the largest consumers below."))
         }
         let grown = summary.consumers.items.compactMap { item -> (DiskConsumer, Int64)? in
             guard let delta = item.delta, delta >= 1_073_741_824, Double(delta) >= Double(item.previousBytes ?? 1) * 0.10 else { return nil }

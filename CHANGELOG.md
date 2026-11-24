@@ -21,6 +21,9 @@ download.
 - Codex sessions stored in dated folders are now picked up by Agents.
 
 ### Changed
+- Sizes pick their unit from their size everywhere: under 1 GB in MB, 1 TB or
+  more in TB, daily disk rates included ("205 MB/day"), and the Trends charts
+  label their axis in the unit that fits the largest value.
 - Disks of 1 TB or more show sizes in TB (for example "1.26 TB free of
   2.00 TB") in the panel, menu bar, Trends, and log.md.
 - Limits is opt-in on new installs. While it's off, Headroom reads no

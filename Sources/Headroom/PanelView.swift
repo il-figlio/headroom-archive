@@ -267,7 +267,7 @@ struct PanelView: View {
                      disk.purgeable > 0 ? "Purgeable \(MemoryFormat.string(disk.purgeable)) — macOS can reclaim it when needed" : "No purgeable space reported",
                      "\(Int(disk.usedFraction * 100))% used"]
         if let rate = monitor.trends.diskRateGBPerDay, rate > 0.1 {
-            lines.append("Filling about \(String(format: "%.1f", rate)) GB/day" + (monitor.trends.daysUntilFull.map { ", full in ~\(Int($0)) days" } ?? ""))
+            lines.append("Filling about \(MemoryFormat.perDay(gb: rate))" + (monitor.trends.daysUntilFull.map { ", full in ~\(Int($0)) days" } ?? ""))
         }
         lines.append("Shaded zone: 90% full (low); tick: 95% (critical).")
         return lines
@@ -276,7 +276,7 @@ struct PanelView: View {
     /// Compact disk footnote: fill rate when known, else purgeable.
     private var diskFootnote: String {
         if let rate = monitor.trends.diskRateGBPerDay, rate > 0.1 {
-            return "−\(String(format: "%.1f", rate)) GB/day" + (monitor.disk.purgeable > 0 ? " · \(MemoryFormat.string(monitor.disk.purgeable)) purgeable" : "")
+            return "−\(MemoryFormat.perDay(gb: rate))" + (monitor.disk.purgeable > 0 ? " · \(MemoryFormat.string(monitor.disk.purgeable)) purgeable" : "")
         }
         return monitor.disk.purgeable > 0 ? "\(MemoryFormat.string(monitor.disk.purgeable)) purgeable" : " "
     }

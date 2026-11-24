@@ -31,10 +31,12 @@ struct HistoryView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Memory & swap").font(.headline)
                     if monitor.trends.points.count >= 2 {
+                        let axis = ByteAxis.fitting(maxGB: monitor.trends.points.map { max($0.usedGB, $0.swapGB) }.max() ?? 0)
                         Chart(monitor.trends.points) { point in
-                            LineMark(x: .value("Time", point.date), y: .value("GB", point.usedGB)).foregroundStyle(by: .value("Metric", "Memory used"))
-                            LineMark(x: .value("Time", point.date), y: .value("GB", point.swapGB)).foregroundStyle(by: .value("Metric", "Swap"))
-                        }.chartForegroundStyleScale(["Memory used": Color.teal, "Swap": Color.orange]).frame(height: 150)
+                            LineMark(x: .value("Time", point.date), y: .value(axis.unit, point.usedGB * axis.scale)).foregroundStyle(by: .value("Metric", "Memory used"))
+                            LineMark(x: .value("Time", point.date), y: .value(axis.unit, point.swapGB * axis.scale)).foregroundStyle(by: .value("Metric", "Swap"))
+                        }.chartForegroundStyleScale(["Memory used": Color.teal, "Swap": Color.orange])
+                            .chartYAxisLabel(axis.unit).frame(height: 150)
                     } else {
                         Text("The chart appears as readings accumulate. Leave Headroom running during your normal work.")
                             .font(.subheadline).foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 90)
@@ -56,14 +58,16 @@ struct HistoryView: View {
                         HStack(spacing: 24) {
                             stat("Free now", MemoryFormat.string(free))
                             stat("Purgeable", MemoryFormat.string(monitor.trends.latestDiskPurgeable ?? 0))
-                            stat("Filled/day", monitor.trends.diskRateGBPerDay.map { $0 > 0.1 ? "\(String(format: "%.1f", $0)) GB" : "flat" } ?? "—")
+                            stat("Filled/day", monitor.trends.diskRateGBPerDay.map { $0 > 0.1 ? MemoryFormat.compact(UInt64($0 * 1_073_741_824)) : "flat" } ?? "—")
                             stat("Runs out in", monitor.trends.daysUntilFull.map { "\(Int($0.rounded(.up)))d" } ?? "—")
                         }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
                             .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.04)))
                         if monitor.trends.diskPoints.count >= 2 {
+                            let axis = ByteAxis.fitting(maxGB: monitor.trends.diskPoints.map(\.freeGB).max() ?? 0)
                             Chart(monitor.trends.diskPoints) { point in
-                                LineMark(x: .value("Time", point.date), y: .value("GB", point.freeGB)).foregroundStyle(by: .value("Metric", "Disk free"))
-                            }.chartForegroundStyleScale(["Disk free": Color.purple]).frame(height: 110)
+                                LineMark(x: .value("Time", point.date), y: .value(axis.unit, point.freeGB * axis.scale)).foregroundStyle(by: .value("Metric", "Disk free"))
+                            }.chartForegroundStyleScale(["Disk free": Color.purple])
+                                .chartYAxisLabel(axis.unit).frame(height: 110)
                         }
                         let used = total > free ? total - free : 0
                         let scanned = monitor.consumers.totalBytes

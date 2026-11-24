@@ -32,3 +32,24 @@ private func bytes(gb: Double) -> UInt64 { UInt64((gb * gib).rounded()) }
     #expect(MemoryFormat.string(bytes(gb: 1023.97)) == "1023.97 GB")
     #expect(MemoryFormat.string(bytes(gb: 10 * 1024 - 1)) == "10.0 TB")
 }
+
+@Test func compactFormatUsesMegabytesBelowOneGigabyte() {
+    #expect(MemoryFormat.compact(bytes(gb: 0.3)) == "307 MB")
+    #expect(MemoryFormat.compact(bytes(gb: 0.94)) == "963 MB")
+    #expect(MemoryFormat.compact(bytes(gb: 0.96)) == "1.0 GB")
+    #expect(MemoryFormat.compact(0) == "0 MB")
+}
+
+@Test func dailyRatesPickTheirOwnUnit() {
+    #expect(MemoryFormat.perDay(gb: 0.2) == "205 MB/day")
+    #expect(MemoryFormat.perDay(gb: 1.6) == "1.6 GB/day")
+    #expect(MemoryFormat.perDay(gb: 1228.8) == "1.20 TB/day")
+}
+
+@Test func chartAxisUnitFollowsTheLargestValue() {
+    #expect(ByteAxis.fitting(maxGB: 1286.4) == ByteAxis(unit: "TB", scale: 1.0 / 1024))
+    #expect(ByteAxis.fitting(maxGB: 98.4).unit == "GB")
+    #expect(ByteAxis.fitting(maxGB: 0.4).unit == "MB")
+    #expect(ByteAxis.fitting(maxGB: 0).unit == "GB")
+}
+

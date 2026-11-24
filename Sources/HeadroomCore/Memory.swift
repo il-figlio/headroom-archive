@@ -135,7 +135,14 @@ public enum MemoryFormat {
     }
     public static func compact(_ bytes: UInt64) -> String {
         let gb = Double(bytes) / 1_073_741_824
-        return terabytes(gb, decimals: 1) ?? String(format: "%.1f GB", gb)
+        if let tb = terabytes(gb, decimals: 1) { return tb }
+        // Below 1 GB as rounded for display, MB reads better than "0.3 GB".
+        if (gb * 10).rounded() / 10 < 1 { return String(format: "%.0f MB", Double(bytes) / 1_048_576) }
+        return String(format: "%.1f GB", gb)
+    }
+    /// A daily change in GB, in whichever unit fits it: "205 MB/day", "1.6 GB/day", "1.20 TB/day".
+    public static func perDay(gb: Double) -> String {
+        compact(UInt64(max(0, gb) * 1_073_741_824)) + "/day"
     }
     /// nil below 1 TB (1024 GB in these binary units), as rounded for display,
     /// so a TB value never reads under "1.00 TB".
@@ -144,5 +151,18 @@ public enum MemoryFormat {
         guard (gb * scale).rounded() / scale >= 1024 else { return nil }
         let tb = gb / 1024
         return (tb * 100).rounded() / 100 >= 10 ? String(format: "%.1f TB", tb) : String(format: "%.2f TB", tb)
+    }
+}
+
+/// Unit for a chart axis, chosen from the largest value it plots, so a 2 TB disk
+/// reads in TB and a small swap series in MB. Values come in GB (binary).
+public struct ByteAxis: Equatable {
+    public let unit: String
+    /// Multiply a GB value by this to plot it in `unit`.
+    public let scale: Double
+    public static func fitting(maxGB: Double) -> ByteAxis {
+        if maxGB >= 1024 { return ByteAxis(unit: "TB", scale: 1.0 / 1024) }
+        if maxGB > 0 && maxGB < 1 { return ByteAxis(unit: "MB", scale: 1024) }
+        return ByteAxis(unit: "GB", scale: 1)
     }
 }
