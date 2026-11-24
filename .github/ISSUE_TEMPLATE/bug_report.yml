@@ -1,0 +1,75 @@
+name: Bug report
+description: Something in Headroom doesn't work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please don't include sign-in tokens, account emails, or private file paths.
+        To report a security problem, follow SECURITY.md instead of opening an issue.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the panel
+        2. ...
+    validations:
+      required: false
+  - type: input
+    id: headroom-version
+    attributes:
+      label: Headroom version
+      description: Shown under the title in Headroom's panel, or in About Headroom.
+      placeholder: "0.8.0"
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: "macOS 15.1"
+    validations:
+      required: true
+  - type: input
+    id: mac-model
+    attributes:
+      label: Mac model and chip
+      placeholder: "MacBook Air 13-inch, M2"
+    validations:
+      required: true
+  - type: dropdown
+    id: placement
+    attributes:
+      label: Where does Headroom appear?
+      options:
+        - Notch
+        - Menu bar
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install Headroom?
+      options:
+        - GitHub Releases download
+        - Homebrew
+        - Built from source
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or logs
+      description: |
+        Optional. Output of `/Applications/Headroom.app/Contents/MacOS/Headroom --diagnose` often helps with readings problems. It lists running app names; remove any you'd rather not share.
+    validations:
+      required: false

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+<channel>
+<title>Headroom updates</title>
+<link>https://github.com/il-figlio/headroom</link>
+<description>Private stable updates for Headroom</description>
+<item>
+<title>Headroom 0.8.0</title>
+<pubDate>Thu, 15 Oct 2026 21:00:00 +0000</pubDate>
+<sparkle:version>12</sparkle:version>
+<sparkle:shortVersionString>0.8.0</sparkle:shortVersionString>
+<sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+<description><![CDATA[<pre>Headroom&#x27;s first downloadable release adds Sparkle self-updates from this private repository.
+
+- Check, download, verify, install, and relaunch from inside Headroom.
+- Automatic update checks and installation can be controlled from the panel&#x27;s settings menu.
+- Uses the existing GitHub CLI login on each Mac. No shared GitHub token ships in the app.
+- Appcast and update archive are signed with Headroom&#x27;s Sparkle Ed25519 key.
+- Universal macOS app for Apple Silicon and Intel, macOS 13 or later.
+- Includes the reservoir icon, memory and disk monitoring, app quit controls, trends, recommendations, and optional agent/quota widgets.
+
+Install Headroom.app in /Applications. Install GitHub CLI and run gh auth login with access to il-figlio/headroom on each Mac before checking for updates.
+</pre>]]></description>
+<enclosure url="https://api.github.com/repos/il-figlio/headroom/releases/assets/645156708" sparkle:installationType="application" sparkle:edSignature="LNEvz6E4QKUMcoVDFWX5sFs07oq89w0MQx8XNLNeBUQgsYwbXH/QfRvQAwRrvGCQNqbHbZRgoP8bV0SsWIMwCQ==" length="4422564" type="application/octet-stream"></enclosure>
+</item>
+</channel>
+</rss><!-- sparkle-signatures:
+edSignature: xZAP0AHB2y8KyoFa+TkQHJZEtXFa30YaMrBIzUswZrY3BOBxZ4+txjAsua0QlfDCTV96o5MNTbtMayCEjTEkAA==
+length: 1974
+-->

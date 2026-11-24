@@ -1,0 +1,18 @@
+.build/
+.build-headroom*/
+.swiftpm/
+dist/
+.DS_Store
+history.sqlite*
+observations/
+.references/
+__pycache__/
+
+# Internal notes stay local: work log, progress, verification records.
+# Keep them in .internal/. The root-level names are ignored too, so a
+# regenerated copy can't be committed by accident.
+.internal/
+/log.md
+/PROGRESS.md
+/DEVLOG.md
+/verification*.json

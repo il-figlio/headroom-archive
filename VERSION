@@ -1,0 +1,5 @@
+# Single source of the app version, read by scripts/build.sh and scripts/release.py.
+# Sparkle compares BUILD_NUMBER (CFBundleVersion), so it must increase with every
+# published build. The release tag is v<MARKETING_VERSION>.
+MARKETING_VERSION=0.9.0
+BUILD_NUMBER=14

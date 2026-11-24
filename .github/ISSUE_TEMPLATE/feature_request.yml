@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest an idea for Headroom.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like Headroom to help with?
+      description: Describe the problem or situation, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How might Headroom handle it?
+    validations:
+      required: false
+  - type: checkboxes
+    id: invariants
+    attributes:
+      label: Design rules
+      description: Headroom never deletes files, never quits apps on its own, never scans folders on a timer, and sends no telemetry. See CONTRIBUTING.md.
+      options:
+        - label: My idea fits within these rules, or I've explained why it should be an exception.
+          required: false

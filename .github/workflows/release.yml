@@ -1,0 +1,175 @@
+name: Release
+
+# Pushing a v<MARKETING_VERSION> tag builds, signs, notarizes and creates a DRAFT
+# GitHub release with the ZIP, DMG, SHA256SUMS and signed appcast.xml. Nothing
+# reaches users until the owner publishes the draft and commits the verified
+# appcast to main with `scripts/release.py promote --from-release`
+# (see docs/releases.md).
+
+on:
+  push:
+    tags: ['v*']
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  XCODE_APP: /Applications/Xcode_26.5.app
+
+jobs:
+  build:
+    name: Build and test (no secrets)
+    runs-on: macos-26
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      app_sha256: ${{ steps.handoff.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "$XCODE_APP" && xcodebuild -version
+
+      - name: Check the tag matches VERSION and has release notes
+        run: |
+          expected="$(./scripts/appconfig.py get TAG)"
+          if [ "$expected" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match VERSION ($expected)"; exit 1
+          fi
+          test -f "docs/releases/$GITHUB_REF_NAME.md" || { echo "::error::Missing docs/releases/$GITHUB_REF_NAME.md"; exit 1; }
+
+      - name: Build universal app (ad-hoc; Developer ID signing happens in the release job)
+        run: HEADROOM_SIGN_IDENTITY=- ./scripts/build.sh
+
+      - name: Swift Testing checks
+        run: ./scripts/check.sh
+
+      - name: XCTest suite
+        run: ./scripts/test.sh
+
+      - name: Hand off the app with its SHA-256
+        id: handoff
+        run: |
+          mkdir -p handoff
+          ditto -c -k --sequesterRsrc --keepParent "dist/$(./scripts/appconfig.py get APP_NAME).app" handoff/app.zip
+          echo "sha256=$(shasum -a 256 handoff/app.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unsigned-app
+          path: handoff/app.zip
+          if-no-files-found: error
+          retention-days: 3
+
+  release:
+    name: Sign, notarize and draft the release
+    needs: build
+    runs-on: macos-26
+    timeout-minutes: 120
+    # Secrets live in this environment only. Protect it with a required reviewer
+    # and a v* tag deployment rule.
+    environment: release
+    permissions:
+      contents: write
+    env:
+      HEADROOM_SIGN_IDENTITY: ${{ vars.HEADROOM_SIGN_IDENTITY }}
+      APP_SHA256: ${{ needs.build.outputs.app_sha256 }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "$XCODE_APP" && xcodebuild -version
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: unsigned-app
+          path: handoff
+
+      - name: Verify the handed-off app against the build job's SHA-256
+        run: |
+          echo "$APP_SHA256  handoff/app.zip" | shasum -a 256 -c -
+          rm -rf dist && mkdir dist && ditto -x -k handoff/app.zip dist
+
+      - name: Import the Developer ID certificate into a throwaway keychain
+        env:
+          P12_BASE64: ${{ secrets.HEADROOM_DEVELOPER_ID_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.HEADROOM_DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          test -n "$HEADROOM_SIGN_IDENTITY" || { echo "::error::Set the HEADROOM_SIGN_IDENTITY variable"; exit 1; }
+          KC="$RUNNER_TEMP/release-signing.keychain-db"
+          KC_PASSWORD="$(openssl rand -hex 24)"
+          security create-keychain -p "$KC_PASSWORD" "$KC"
+          security set-keychain-settings -lut 7200 "$KC"
+          security unlock-keychain -p "$KC_PASSWORD" "$KC"
+          (umask 077; printf '%s' "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/developer-id.p12")
+          security import "$RUNNER_TEMP/developer-id.p12" -k "$KC" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/developer-id.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KC_PASSWORD" "$KC" > /dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          security find-identity -v -p codesigning "$KC" | grep -F "$HEADROOM_SIGN_IDENTITY"
+          echo "HEADROOM_SIGN_KEYCHAIN=$KC" >> "$GITHUB_ENV"
+
+      - name: Sign inside-out with hardened runtime and secure timestamps
+        run: ./scripts/sign.sh "dist/$(./scripts/appconfig.py get APP_NAME).app"
+
+      - name: Write the App Store Connect API key
+        env:
+          NOTARY_P8: ${{ secrets.HEADROOM_NOTARY_KEY_P8 }}
+        run: |
+          (umask 077; printf '%s\n' "$NOTARY_P8" > "$RUNNER_TEMP/notary-key.p8")
+          echo "HEADROOM_NOTARY_KEY=$RUNNER_TEMP/notary-key.p8" >> "$GITHUB_ENV"
+
+      - name: Fetch pinned Sparkle tools
+        run: ./scripts/sparkle-tools.sh
+
+      - name: Notarize and staple the app, build the ZIP and the signed, notarized DMG
+        env:
+          HEADROOM_NOTARY_KEY_ID: ${{ secrets.HEADROOM_NOTARY_KEY_ID }}
+          HEADROOM_NOTARY_ISSUER: ${{ secrets.HEADROOM_NOTARY_ISSUER }}
+        run: ./scripts/release.py package
+
+      - name: Sign the appcast with the Sparkle EdDSA key
+        env:
+          HEADROOM_SPARKLE_ED_KEY: ${{ secrets.HEADROOM_SPARKLE_ED_KEY }}
+        run: ./scripts/release.py appcast
+
+      - name: Verify everything before upload
+        run: ./scripts/release.py verify --distribution
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEADROOM_SPARKLE_ED_KEY: ${{ secrets.HEADROOM_SPARKLE_ED_KEY }}
+          LEGACY_BRIDGE: ${{ vars.HEADROOM_LEGACY_BRIDGE }}
+        run: |
+          if [ "$LEGACY_BRIDGE" = "true" ]; then
+            ./scripts/release.py publish --verify-tag --legacy-bridge
+          else
+            ./scripts/release.py publish --verify-tag
+          fi
+
+      - name: Render the Homebrew cask
+        run: ./scripts/render-cask.py
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ github.ref_name }}
+          path: |
+            dist/releases/${{ github.ref_name }}/
+            !dist/releases/${{ github.ref_name }}/*.zip
+            !dist/releases/${{ github.ref_name }}/*.dmg
+          retention-days: 30
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          [ -n "${HEADROOM_SIGN_KEYCHAIN:-}" ] && security delete-keychain "$HEADROOM_SIGN_KEYCHAIN" || true
+          rm -f "$RUNNER_TEMP/notary-key.p8" "$RUNNER_TEMP/developer-id.p12"
