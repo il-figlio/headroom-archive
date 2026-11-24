@@ -13,11 +13,8 @@ coding agents. It reads what macOS already measures, keeps its history on
 your Mac, and never deletes anything.
 
 <p align="center">
-  <img src="docs/notch-indicator-v2.png" alt="Headroom's collapsed notch indicator, shown with demo data" width="368">
-</p>
-
-<p align="center">
-  <img src="docs/notch-panel-v2.png" alt="Headroom's expanded notch panel with memory, disk, plan limits, and apps with Quit buttons, shown with demo data" width="400">
+  <img src="docs/scene-laptop.png" alt="Headroom's panel opening from the notch on a laptop, with memory, disk, plan limits, and apps with Quit buttons, shown with demo data" width="47.5%">
+  <img src="docs/scene-desktop.png" alt="Headroom's panel opening from the menu bar on a desktop display, with memory, disk, coding agents, and apps with Quit buttons, shown with demo data" width="51%">
 </p>
 
 ## Download
@@ -56,10 +53,6 @@ Releases are signed with a Developer ID and notarized by Apple.
 
 Hover over any row, meter, or tile for details. Hide or show cards from the
 panel's **···** menu.
-
-<p align="center">
-  <img src="docs/menubar-panel-v1.png" alt="Headroom's menu bar panel, shown with demo data" width="400">
-</p>
 
 <p align="center">
   <img src="docs/trends-v2.png" alt="Headroom's Trends window with memory and disk history, shown with demo data" width="640">
