@@ -10,15 +10,34 @@ public struct ScreenshotFixtures {
     public let agents: AgentSnapshot
     public let agentBurn: [HourBurn]
 
-    public init(now: Date = Date()) {
+    /// The machine a scene shows. `.laptop` is the default for every
+    /// single-view render; `.desktop` backs the larger-display scene.
+    public enum Machine: Sendable { case laptop, desktop }
+
+    public init(now: Date = Date(), machine: Machine = .laptop) {
         let gb: Double = 1_073_741_824
-        memory = SystemMemory(total: UInt64(16 * gb), used: UInt64(12.8 * gb), compressed: UInt64(2.4 * gb),
-                              swap: UInt64(0.8 * gb), pressure: .warning, valid: true)
-        disk = DiskSpace(total: UInt64(512 * gb), free: UInt64(98.4 * gb), purgeable: UInt64(14.2 * gb), valid: true)
-        let examples: [(String, String, Double, Int)] = [
-            ("Xcode", "com.apple.dt.Xcode", 3.24, 8), ("Safari", "com.apple.Safari", 2.18, 12),
-            ("Terminal", "com.apple.Terminal", 0.48, 3), ("Notes", "com.apple.Notes", 0.22, 1),
-            ("Finder", "com.apple.finder", 0.18, 1)
+        let desktop = machine == .desktop
+        // Laptop: 16 GB / 512 GB, elevated. Desktop: 64 GB / 2 TB, normal.
+        let usedGB = desktop ? 31.4 : 12.8
+        let swapGB = desktop ? 0 : 0.8
+        let pressure: Pressure = desktop ? .normal : .warning
+        let diskTotalGB: Double = desktop ? 2048 : 512
+        let diskFreeGB = desktop ? 1286.4 : 98.4
+        let purgeableGB = desktop ? 38.6 : 14.2
+        memory = SystemMemory(total: UInt64((desktop ? 64 : 16) * gb), used: UInt64(usedGB * gb),
+                              compressed: UInt64((desktop ? 1.6 : 2.4) * gb),
+                              swap: UInt64(swapGB * gb), pressure: pressure, valid: true)
+        disk = DiskSpace(total: UInt64(diskTotalGB * gb), free: UInt64(diskFreeGB * gb), purgeable: UInt64(purgeableGB * gb), valid: true)
+        // Apple's own apps, so icons resolve from the system and no
+        // third-party brand appears.
+        let examples: [(String, String, Double, Int)] = desktop ? [
+            ("iMovie", "com.apple.iMovieApp", 9.84, 5), ("GarageBand", "com.apple.garageband10", 4.62, 4),
+            ("Safari", "com.apple.Safari", 4.18, 24), ("Photos", "com.apple.Photos", 2.36, 6),
+            ("Keynote", "com.apple.Keynote", 1.12, 2)
+        ] : [
+            ("Safari", "com.apple.Safari", 2.94, 14), ("Terminal", "com.apple.Terminal", 0.62, 3),
+            ("Messages", "com.apple.MobileSMS", 0.58, 2), ("Notes", "com.apple.Notes", 0.31, 1),
+            ("Music", "com.apple.Music", 0.27, 3)
         ]
         apps = examples.enumerated().map { index, example in
             let identity = AppIdentity(pid: Int32(-1000 - index), name: example.0, bundlePath: "",
@@ -26,20 +45,28 @@ public struct ScreenshotFixtures {
             return AppMemory(app: identity, bytes: UInt64(example.2 * gb), processCount: example.3, unreadableCount: 0)
         }
         var history = TrendSummary()
-        history.sampleCount = 361; history.observedMinutes = 360; history.pressuredMinutes = 42
-        history.peakSwap = UInt64(0.8 * gb); history.latestAt = now; history.latestPressure = .warning
+        history.sampleCount = 361; history.observedMinutes = 360; history.pressuredMinutes = desktop ? 0 : 42
+        history.peakSwap = UInt64(swapGB * gb); history.latestAt = now; history.latestPressure = pressure
         history.latestApps = ObservedApp.from(apps)
+        let rateGBPerDay = desktop ? 3.8 : 1.6
         for i in 0...72 {
             let date = now.addingTimeInterval(Double(i - 72) * 300)
-            let used = 8.5 + Double(i) * 0.055 + sin(Double(i) * 0.42) * 0.55
-            history.points.append(TrendPoint(date: date, usedGB: i == 72 ? 12.8 : used, swapGB: max(0, Double(i - 40) * 0.025)))
-            history.diskPoints.append(DiskPoint(date: date, freeGB: 98.8 - Double(i) / 180, purgeableGB: 14.2))
+            let used = desktop ? 26.2 + Double(i) * 0.06 + sin(Double(i) * 0.35) * 0.9
+                               : 8.5 + Double(i) * 0.055 + sin(Double(i) * 0.42) * 0.55
+            history.points.append(TrendPoint(date: date, usedGB: i == 72 ? usedGB : used,
+                                             swapGB: desktop ? 0 : max(0, Double(i - 40) * 0.025)))
+            history.diskPoints.append(DiskPoint(date: date, freeGB: diskFreeGB + Double(72 - i) * rateGBPerDay / 288,
+                                                purgeableGB: purgeableGB))
         }
         history.latestDiskFree = disk.free; history.latestDiskTotal = disk.total
-        history.latestDiskPurgeable = disk.purgeable; history.diskRateGBPerDay = 1.6
-        history.daysUntilFull = 61.5
+        history.latestDiskPurgeable = disk.purgeable; history.diskRateGBPerDay = rateGBPerDay
+        history.daysUntilFull = diskFreeGB / rateGBPerDay
         history.consumers.scannedAt = now
-        history.consumers.items = [
+        history.consumers.items = desktop ? [
+            DiskConsumer(path: "/Users/demo/Movies", name: "Movies", bytes: UInt64(412 * gb), previousBytes: nil, scannedAt: now, partial: false),
+            DiskConsumer(path: "/Users/demo/Music", name: "Music", bytes: UInt64(186 * gb), previousBytes: nil, scannedAt: now, partial: false),
+            DiskConsumer(path: "/Applications", name: "Applications", bytes: UInt64(96 * gb), previousBytes: nil, scannedAt: now, partial: false)
+        ] : [
             DiskConsumer(path: "/Applications", name: "Applications", bytes: UInt64(64 * gb), previousBytes: nil, scannedAt: now, partial: false),
             DiskConsumer(path: "/Users/demo/Projects", name: "Projects", bytes: UInt64(42 * gb), previousBytes: nil, scannedAt: now, partial: false)
         ]

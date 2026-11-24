@@ -158,11 +158,11 @@ final class MemoryMonitor: ObservableObject {
     private var recordedPressure: Pressure = .unknown
     private var iconCache: [String: NSImage?] = [:]
 
-    init(preview: Bool = false) {
+    init(preview: Bool = false, machine: ScreenshotFixtures.Machine = .laptop) {
         isPreview = preview
         if preview {
             placement = .automatic; historyEnabled = true
-            let demo = ScreenshotFixtures()
+            let demo = ScreenshotFixtures(machine: machine)
             memory = demo.memory; disk = demo.disk; apps = demo.apps
             trends = demo.summary; consumers = demo.summary.consumers; quotas = demo.quotas
             agents = demo.agents; agentBurn = demo.agentBurn // UI-STUB: preview-only demo agents for screenshots
