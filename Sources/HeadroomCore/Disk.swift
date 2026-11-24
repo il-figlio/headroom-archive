@@ -179,17 +179,15 @@ public enum DiskAdvice {
     public static func recommend(_ summary: TrendSummary) -> [Recommendation] {
         var result: [Recommendation] = []
         guard let free = summary.latestDiskFree, let total = summary.latestDiskTotal, total > 0 else { return result }
-        let freeGB = Double(free) / 1_073_741_824
-        let totalGB = Double(total) / 1_073_741_824
         let fraction = Double(free) / Double(total)
         let purgeable = summary.latestDiskPurgeable.map { MemoryFormat.string($0) }
         let reclaimHint = purgeable.map { " \( $0 ) is purgeable caches macOS can reclaim on its own." } ?? ""
         if fraction < 0.05 {
             result.append(.init(title: "Free up disk space soon",
-                                detail: "Only \(String(format: "%.1f", freeGB)) GB of \(String(format: "%.0f", totalGB)) GB remains. Below about 5% free, macOS slows writes and swap and updates can fail. Sort the storage view by size and remove or relocate the largest items; Headroom never deletes anything itself.\(reclaimHint)"))
+                                detail: "Only \(MemoryFormat.compact(free)) of \(MemoryFormat.compact(total)) remains. Below about 5% free, macOS slows writes and swap and updates can fail. Sort the storage view by size and remove or relocate the largest items; Headroom never deletes anything itself.\(reclaimHint)"))
         } else if fraction < 0.10 {
             result.append(.init(title: "Disk space is getting low",
-                                detail: "\(String(format: "%.1f", freeGB)) GB free of \(String(format: "%.0f", totalGB)) GB. Review Downloads, developer caches, and large media before it becomes urgent.\(reclaimHint)"))
+                                detail: "\(MemoryFormat.compact(free)) free of \(MemoryFormat.compact(total)). Review Downloads, developer caches, and large media before it becomes urgent.\(reclaimHint)"))
         }
         if let days = summary.daysUntilFull, days > 0, days < 14, let rate = summary.diskRateGBPerDay, rate > 0.1 {
             result.append(.init(title: "Disk is filling quickly",

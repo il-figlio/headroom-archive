@@ -21,6 +21,8 @@ download.
 - Codex sessions stored in dated folders are now picked up by Agents.
 
 ### Changed
+- Disks of 1000 GB or more show sizes in TB (for example "1.26 TB free of
+  2.00 TB") in the panel, menu bar, Trends, and log.md.
 - Limits is opt-in on new installs. While it's off, Headroom reads no
   sign-ins, runs no provider CLI, and makes no usage requests. Existing
   installs keep their current setting.

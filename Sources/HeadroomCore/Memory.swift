@@ -123,11 +123,25 @@ public enum Placement: String, CaseIterable {
     public func usesNotch(available: Bool) -> Bool { available && self != .menuBar }
 }
 
+/// Byte counts in binary units labeled GB/TB, matching what Headroom has
+/// always shown. Sizes that would print as 1000 GB or more switch to TB
+/// (only disks get there): two decimals below 10 TB, one above.
 public enum MemoryFormat {
     public static func string(_ bytes: UInt64) -> String {
         let gb = Double(bytes) / 1_073_741_824
+        if let tb = terabytes(gb, decimals: 2) { return tb }
         if gb >= 1 { return String(format: "%.2f GB", gb) }
         return String(format: "%.0f MB", Double(bytes) / 1_048_576)
     }
-    public static func compact(_ bytes: UInt64) -> String { String(format: "%.1f GB", Double(bytes) / 1_073_741_824) }
+    public static func compact(_ bytes: UInt64) -> String {
+        let gb = Double(bytes) / 1_073_741_824
+        return terabytes(gb, decimals: 1) ?? String(format: "%.1f GB", gb)
+    }
+    /// nil while the GB text, as rounded for display, stays under 1000.
+    private static func terabytes(_ gb: Double, decimals: Int) -> String? {
+        let scale = pow(10, Double(decimals))
+        guard (gb * scale).rounded() / scale >= 1000 else { return nil }
+        let tb = gb / 1024
+        return (tb * 100).rounded() / 100 >= 10 ? String(format: "%.1f TB", tb) : String(format: "%.2f TB", tb)
+    }
 }
