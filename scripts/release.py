@@ -98,6 +98,9 @@ def notary_credentials(profile):
         return ['--key', values[0], '--key-id', values[1], '--issuer', values[2]]
     if any(values):
         raise Failure('Set all of ' + ', '.join(names) + ' or none of them.')
+    # Default: the Keychain profile named in packaging/app.env, created once with
+    # `xcrun notarytool store-credentials <NOTARY_PROFILE> --key ... --key-id ... --issuer ...`.
+    profile = profile or CONFIG.get('NOTARY_PROFILE')
     return ['--keychain-profile', profile] if profile else None
 
 

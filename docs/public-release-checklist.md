@@ -188,19 +188,27 @@ before extraction, system profile off, remote release notes off. Builds up
 to 0.8.0 read a private feed through the GitHub CLI login; the public
 release replaces that with an unauthenticated feed.
 
-## 8. CI release on tag
+## 8. Local verification and release (no hosted CI)
 
-- [ ] Pushing a `v*` tag builds, signs, notarizes, packages, signs the feed
-      entry, and creates a GitHub Release with the archive and checksums.
-- [ ] Signing material lives in encrypted CI secrets with the narrowest
-      scope available, and is never printed.
-- [ ] The workflow refuses to overwrite a published release.
-- [ ] The updated appcast is committed or published only after the release
-      assets exist.
-- [ ] Pull requests run the tests without access to secrets.
+No GitHub Actions. Hosted CI costs minutes of queueing and setup per run
+(see usejog/joggernaut's findings), and macOS signing would need private
+keys on GitHub. `ante-ci-bot`'s native checks cover Linux projects; until it
+has a Mac worker, Mac apps verify and release on the release Mac.
 
-**Headroom:** in progress with the release pipeline work
-(`.github/workflows/`).
+- [ ] One script runs every check: `scripts/verify.sh` (all tests, universal
+      build, release dry run), printing each step's wall time. No skips, no
+      retries; fix flaky tests instead.
+- [ ] Run it before every push to `main` and before every tag.
+- [ ] Actions disabled in the repository settings, and no `.github/workflows/`.
+- [ ] Signing material stays in the release Mac's login Keychain (Developer ID
+      certificate, notarytool profile, Sparkle key), backed up in a password
+      manager. Nothing is stored as a GitHub secret.
+- [ ] The release script refuses to overwrite a published release, and the
+      appcast is committed only after the release assets exist.
+
+**Headroom:** `./scripts/verify.sh` passes in about 61 s on this Mac (checks
+4 s, universal build 35 s, dry run 21 s); the hosted run it replaced took
+about 4 min. Releases: `docs/releases.md`.
 
 ## 9. Homebrew cask
 
@@ -209,7 +217,7 @@ release replaces that with an unauthenticated feed.
       declares the minimum macOS version, and uses `auto_updates true` when
       the app updates itself.
 - [ ] A `zap` stanza lists the app's data folder and preferences.
-- [ ] The release workflow, or a documented step, bumps the cask.
+- [ ] A documented release step bumps the cask (`scripts/render-cask.py`).
 - [ ] Mark the README's Homebrew line "coming soon" until the tap works.
 
 **Headroom:** `brew install --cask il-figlio/tap/headroom`, marked coming

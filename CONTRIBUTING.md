@@ -58,11 +58,12 @@ Use whichever older SDK version you have.
 
 | Command | What it runs | Needs |
 | --- | --- | --- |
+| `./scripts/verify.sh` | Everything below plus a universal build and a release dry run, with timings. Run before every push. | Command Line Tools or Xcode |
 | `./scripts/check.sh` | Swift Testing checks in `Tests/HeadroomCoreChecks` | Command Line Tools or Xcode |
 | `./scripts/test.sh` | The full `swift test` suite, including the XCTest tests | Full Xcode |
 | `./scripts/test-quit.sh` | Builds a disposable fixture app and checks Quit and Force Quit against it | Command Line Tools or Xcode |
 
-Run `check.sh` for every change. Run `test.sh` too when you have Xcode.
+Run `verify.sh` before every push (`--quick` runs only the checks). There's no hosted CI, so this is the gate.
 `test-quit.sh` refuses to quit anything whose bundle ID isn't its dedicated
 fixture. Keep it that way.
 

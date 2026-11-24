@@ -8,8 +8,7 @@
 
 ## Checklist
 
-- [ ] `./scripts/check.sh` passes
-- [ ] `./scripts/test.sh` passes (if you have Xcode)
+- [ ] `./scripts/verify.sh` passes (or `--quick` for docs-only changes)
 - [ ] `./scripts/test-quit.sh` passes (if Quit or process handling changed)
 - [ ] `./scripts/build.sh` produces a working `dist/Headroom.app`
 - [ ] `--diagnose` and `--capture` still work on a real, populated history database (migrations included)
