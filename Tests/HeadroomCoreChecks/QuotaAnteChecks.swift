@@ -151,10 +151,15 @@ private struct InstantSource: QuotaSource {
     let started = Date()
     let sources: [any QuotaSource] = [InstantSource()] + AnteClaudeQuotaSource.sources(home: home.url, poller: poller)
     let readings = await QuotaFetcher.fetchAll(sources: sources, home: home.url)
-    let elapsed = Date().timeIntervalSince(started)
+    let ended = Date()
+    let elapsed = ended.timeIntervalSince(started)
     #expect(elapsed < 0.5 + 0.3 + 1.5, "took \(elapsed)s")
     #expect(readings.map(\.id) == ["codex", "claude/personal"])
-    #expect(readings[0].fetchedAt.timeIntervalSince(started) < 0.4)
+    // Relative, not absolute: slow CI runners take a while to start the task
+    // group, but the quick source must still finish long before the hung one
+    // is killed (timeout 0.5 s + grace 0.3 s).
+    #expect(ended.timeIntervalSince(readings[0].fetchedAt) > 0.4,
+            "quick source finished \(ended.timeIntervalSince(readings[0].fetchedAt))s before the hung one")
     #expect(readings[1].error == "Ante timed out reading Claude usage")
 }
 
