@@ -48,27 +48,41 @@ otherwise.
 
 ## Limits
 
-Limits shows your coding-plan usage windows (for example, a 5-hour and a
-weekly window), the plan name, credit balance where one exists, and reset
-times. On new installs Limits is off until you turn it on.
+Limits shows your Codex and Claude plan usage windows, the plan name,
+credit balance where one exists, and reset times. On new installs Limits is
+off until you turn it on. While it is off, Headroom reads no sign-ins, runs
+no command-line tools, and makes no usage requests.
 
 - **Codex** reads the sign-in that the Codex CLI stores in
-  `~/.codex/auth.json` and asks ChatGPT's usage endpoint for the plan,
-  rate-limit windows, and credits. An API-key-only sign-in has no plan
-  limits to show.
-- **Claude** reads Claude Code's sign-in from `~/.claude/.credentials.json`
-  or Ante's from `~/.ante/auth/credentials/oauth/anthropic.json`. If neither
-  file has a usable sign-in, it tries the `Claude Code-credentials` item in
-  your login Keychain without user interaction: if macOS would need to ask
-  you, the read fails quietly instead of prompting.
-- **Named Claude accounts from Ante.** If Ante is installed at
-  `~/.ante/bin/ante` and has named Claude sign-ins, Headroom runs
-  `ante usage anthropic/<account> --json` for each and shows one row per
-  account. Ante manages its own sign-ins. When named Ante accounts exist,
-  they replace the Claude Code row.
-- **Read-only.** Headroom never refreshes, rotates, or writes provider
-  credentials. When a sign-in expires, Limits says so and the provider's own
-  app or CLI renews it.
+  `~/.codex/auth.json` (read-only) and asks
+  `chatgpt.com/backend-api/wham/usage` for the plan, rate-limit windows, and
+  credits. An API-key-only sign-in has no plan limits to show.
+- **Claude** uses Claude Code's sign-in: `~/.claude/.credentials.json` if
+  that file exists, otherwise the `Claude Code-credentials` item in your
+  login Keychain. Headroom also accepts Ante's original single-file sign-in,
+  `~/.ante/auth/credentials/oauth/anthropic.json`. It asks
+  `api.anthropic.com/api/oauth/usage` for the 5-hour window, the weekly
+  window, and model-specific weekly windows (for example Sonnet or Opus)
+  when Anthropic reports them.
+- **Keychain without prompts.** Headroom checks that the Keychain item
+  exists without reading it, and reads the token only to make the usage
+  request. The read never shows a Keychain prompt: if macOS would need to
+  ask you, it fails quietly and Limits says Claude usage is unavailable.
+  **Use Claude Code's Keychain sign-in** in Settings → Limits (on by
+  default) turns Keychain use off entirely.
+- **Sign-in changes.** When Claude Code renews or replaces its sign-in,
+  Headroom notices from the modification time of the file or Keychain item,
+  without reading the secret, and tries again.
+- **Named Claude accounts from Ante.** Separate rows for accounts such as
+  Personal and Work need the Ante CLI installed at `~/.ante/bin/ante`, with
+  named sign-ins in `~/.ante/auth/credentials/oauth/anthropic/`. Headroom
+  lists those file names (it never opens the files) and runs
+  `ante usage anthropic/<account> --json` for each, with a 20-second limit.
+  Ante manages its own sign-ins. While any named Ante account exists, those
+  accounts replace the Claude Code row, and Settings says so.
+- **Read-only.** Headroom never refreshes, rotates, writes, or copies
+  provider tokens. When a sign-in expires, Limits says so and the
+  provider's own app or CLI (or Ante) renews it.
 - **Polite polling.** About every 15 minutes and when you open the panel.
   `Retry-After` and HTTP 429 responses back a source off. A failed refresh
   keeps the last good reading, dimmed and labeled with when it was fetched.
@@ -77,9 +91,19 @@ times. On new installs Limits is off until you turn it on.
 - **Nothing without a sign-in.** If no provider sign-in exists, nothing is
   fetched and the card stays hidden.
 
+### Supported and not supported
+
+| Tool | Supported | Why |
+| --- | --- | --- |
+| Codex (ChatGPT plan) | Yes | Reuses the Codex CLI's sign-in file |
+| Claude (Claude Code) | Yes | Reuses Claude Code's sign-in file or Keychain item |
+| Claude, named accounts | Yes, with the Ante CLI | Ante reads its own sign-ins and fetches the usage |
+| Gemini, Cursor, Copilot, Windsurf, and others | No | Their usage would require browser cookies, a new sign-in, or refreshing and writing tokens, none of which Headroom does |
+
 The usage endpoints Limits calls are the ones the providers' own apps use.
-They are not public, documented APIs and can change or stop working without
-notice.
+They are unofficial, undocumented, and can change or stop working without
+notice. [PRIVACY.md](../PRIVACY.md#limits-off-until-you-turn-it-on) lists
+every file Limits reads and every request it makes.
 
 ## Agents
 

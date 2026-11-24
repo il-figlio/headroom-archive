@@ -101,7 +101,8 @@ Read the code, not the old docs. For each item, record the answer in
 days. Agents is off by default; when on, it reads transcripts read-only,
 keeps only metadata, and lists processes with `/usr/bin/ps`. Limits is
 opt-in on new installs; it reads existing Codex, Claude Code, and Ante
-sign-ins (plus a non-interactive Keychain fallback), calls the providers'
+sign-ins (including Claude Code's Keychain item, read without prompts and
+switchable off), calls the providers'
 unofficial usage endpoints, or runs `ante usage`. Sparkle checks daily with
 its system profile disabled.
 

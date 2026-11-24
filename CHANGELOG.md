@@ -17,7 +17,16 @@ download.
 - Hover details across the panel: rest on any row, meter, or tile to see
   exactly what it measures.
 - Named Claude accounts from Ante: each signed-in account gets its own row
-  in Limits, read through the `ante usage` command.
+  in Limits, read through the `ante usage` command. Named accounts need the
+  Ante CLI at `~/.ante/bin/ante`; while any exist, they replace the Claude
+  Code row.
+- Claude Code users whose sign-in lives in the login Keychain now see their
+  Claude limits. Headroom never shows a Keychain prompt, and **Use Claude
+  Code's Keychain sign-in** in Settings → Limits turns Keychain use off.
+- Claude's model-specific weekly windows (for example Sonnet or Opus) appear
+  alongside the 5-hour and weekly windows when Anthropic reports them.
+- When Claude Code's sign-in changes, Limits notices and tries again without
+  reading the secret to check.
 - Codex sessions stored in dated folders are now picked up by Agents.
 
 ### Changed
@@ -39,9 +48,9 @@ download.
 - The Agents card is built around what's running now: project, agent, and
   the live memory of each agent's processes, then today's tokens and
   estimated spend.
-- Limits never refreshes or writes provider credentials and never asks for
-  Keychain permission. When a sign-in expires, the provider's own app or CLI
-  renews it.
+- Limits never refreshes, writes, or copies provider credentials and never
+  asks for Keychain permission. When a sign-in expires, the provider's own
+  app or CLI renews it.
 - Faster and lighter: memory and disk readings appear before slower history
   and agent work, quiet agent rescans and history writes are several times
   faster, and the `log.md` report is rewritten at most every 15 minutes (or

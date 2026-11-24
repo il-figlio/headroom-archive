@@ -44,8 +44,10 @@ Releases are signed with a Developer ID and notarized by Apple.
 - **Apps:** each app's memory, including its helper processes, with
   **Quit** (apps can ask you to save) and a confirmed **Force Quit**.
   Nothing is ever quit automatically.
-- **Limits:** your Codex and Claude plan usage windows and reset times,
-  using sign-ins already on your Mac. Off until you turn it on.
+- **Limits:** Codex and Claude plan usage only, read through the providers'
+  unofficial usage endpoints with sign-ins already on your Mac. Off until
+  you turn it on. Separate rows for named Claude accounts (such as Personal
+  and Work) need the [Ante](https://ante.run) CLI.
 - **Agents:** running coding-agent sessions, their memory, and today's
   tokens and estimated spend. Off by default.
 - **Trends:** 24-hour memory and disk charts, time spent under pressure,
@@ -67,9 +69,11 @@ For the details behind each reading, see [How Headroom works](docs/how-it-works.
 Headroom has no account, no analytics, and no telemetry. Your history stays
 on your Mac for 30 days. Headroom connects to the internet only to check
 for updates and, if you turn on Limits, to ask Codex and Claude for your own
-plan usage. Agents reads coding-agent transcripts read-only and keeps only
-metadata such as token counts. [PRIVACY.md](PRIVACY.md) lists exactly what
-is read, stored, and sent.
+plan usage through their unofficial usage endpoints. Headroom never
+refreshes, writes, or copies a provider's sign-in. Agents reads
+coding-agent transcripts read-only and keeps only metadata such as token
+counts. [PRIVACY.md](PRIVACY.md) lists exactly what is read, stored, and
+sent.
 
 ## Updates
 
@@ -110,6 +114,15 @@ Bug reports, ideas, and pull requests are welcome: see
 [CONTRIBUTING.md](CONTRIBUTING.md). Report security problems privately as
 described in [SECURITY.md](SECURITY.md). Changes are listed in
 [CHANGELOG.md](CHANGELOG.md).
+
+## Acknowledgements
+
+Thanks to [CodexBar](https://github.com/steipete/CodexBar) by Peter
+Steinberger, whose documentation of the Codex and Claude usage endpoints
+(including Claude's per-model weekly windows and Keychain change detection)
+informed Limits. Headroom re-implements that behavior from the
+documentation and contains no CodexBar code. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## License
 
