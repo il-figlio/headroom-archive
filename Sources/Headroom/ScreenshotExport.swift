@@ -14,6 +14,17 @@ enum ScreenshotExport {
         let monitor = MemoryMonitor(preview: true)
         // Size as if on a laptop whose visible frame is 900 pt tall.
         PanelWidgets.shared.setScreenLimit(900 - PanelMetrics.screenMargin)
+        try render(HistoryView(monitor: monitor), size: NSSize(width: 760, height: 1200),
+                   title: "Trends & recommendations", to: directory.appendingPathComponent("trends-v2.png"))
+        try ScreenshotScenes.render(directory: directory)
+        guard CommandLine.arguments.contains("--screenshot-variants") else { return }
+        try renderVariants(monitor: monitor, directory: directory)
+    }
+
+    /// Review-only renders (not part of docs): the bare panels, expanded
+    /// Limits, light mode, the opt-in Agents card, and the hover bubbles at
+    /// their natural size.
+    private static func renderVariants(monitor: MemoryMonitor, directory: URL) throws {
         try render(NotchView(monitor: monitor, gap: 180, topHeight: 32, expanded: true, open: {}, close: {}),
                    size: NSSize(width: 400, height: PanelMetrics.size().height + 32),
                    title: "Notch panel", to: directory.appendingPathComponent("notch-panel-v2.png"))
@@ -22,16 +33,6 @@ enum ScreenshotExport {
                    title: "Collapsed notch", to: directory.appendingPathComponent("notch-indicator-v2.png"))
         try render(PanelView(monitor: monitor, close: {}), size: PanelMetrics.size(),
                    title: "Menu bar panel", to: directory.appendingPathComponent("menubar-panel-v1.png"))
-        try render(HistoryView(monitor: monitor), size: NSSize(width: 760, height: 1200),
-                   title: "Trends & recommendations", to: directory.appendingPathComponent("trends-v2.png"))
-        try ScreenshotScenes.render(directory: directory)
-        guard CommandLine.arguments.contains("--screenshot-variants") else { return }
-        try renderVariants(monitor: monitor, directory: directory)
-    }
-
-    /// Review-only renders (not part of docs): expanded Limits, light mode,
-    /// the opt-in Agents card, and the hover bubbles at their natural size.
-    private static func renderVariants(monitor: MemoryMonitor, directory: URL) throws {
         try render(PanelView(monitor: monitor, close: {}).environment(\.quotaExpandedByDefault, true), size: PanelMetrics.size(),
                    title: "Menu bar panel · Limits expanded", to: directory.appendingPathComponent("menubar-panel-limits-expanded.png"))
         try render(PanelView(monitor: monitor, close: {}), size: PanelMetrics.size(), scheme: .light,

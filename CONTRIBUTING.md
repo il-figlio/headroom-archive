@@ -77,8 +77,10 @@ dist/Headroom.app/Contents/MacOS/Headroom --show-panel    # open the panel at la
 dist/Headroom.app/Contents/MacOS/Headroom --show-trends   # open the Trends window at launch
 ```
 
-`./scripts/screenshots.sh` rebuilds the app and regenerates the README
-screenshots from the real views with demo data.
+`./scripts/screenshots.sh` rebuilds the app (signed ad hoc, so no keychain
+is involved) and regenerates the README screenshots from the real views with
+demo data. Add `--screenshot-variants` for review-only renders of the bare
+panels, light mode, settings, and hover details.
 
 ## Invariants
 
