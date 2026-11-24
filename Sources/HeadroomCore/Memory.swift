@@ -137,10 +137,11 @@ public enum MemoryFormat {
         let gb = Double(bytes) / 1_073_741_824
         return terabytes(gb, decimals: 1) ?? String(format: "%.1f GB", gb)
     }
-    /// nil while the GB text, as rounded for display, stays under 1000.
+    /// nil below 1 TB (1024 GB in these binary units), as rounded for display,
+    /// so a TB value never reads under "1.00 TB".
     private static func terabytes(_ gb: Double, decimals: Int) -> String? {
         let scale = pow(10, Double(decimals))
-        guard (gb * scale).rounded() / scale >= 1000 else { return nil }
+        guard (gb * scale).rounded() / scale >= 1024 else { return nil }
         let tb = gb / 1024
         return (tb * 100).rounded() / 100 >= 10 ? String(format: "%.1f TB", tb) : String(format: "%.2f TB", tb)
     }

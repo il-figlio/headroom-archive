@@ -4,7 +4,7 @@ import Testing
 private let gib: Double = 1_073_741_824
 private func bytes(gb: Double) -> UInt64 { UInt64((gb * gib).rounded()) }
 
-@Test func byteFormatStaysInGigabytesBelowOneThousand() {
+@Test func byteFormatStaysInGigabytesBelowOneTerabyte() {
     #expect(MemoryFormat.string(bytes(gb: 999.9)) == "999.90 GB")
     #expect(MemoryFormat.compact(bytes(gb: 999.9)) == "999.9 GB")
     #expect(MemoryFormat.string(bytes(gb: 12.8)) == "12.80 GB")
@@ -12,9 +12,11 @@ private func bytes(gb: Double) -> UInt64 { UInt64((gb * gib).rounded()) }
     #expect(MemoryFormat.string(492 * 1_048_576) == "492 MB")
 }
 
-@Test func byteFormatSwitchesToTerabytesAtOneThousandGigabytes() {
-    #expect(MemoryFormat.string(bytes(gb: 1000)) == "0.98 TB")
-    #expect(MemoryFormat.compact(bytes(gb: 1000)) == "0.98 TB")
+@Test func byteFormatSwitchesToTerabytesAtOneTerabyte() {
+    #expect(MemoryFormat.string(bytes(gb: 1000)) == "1000.00 GB")
+    #expect(MemoryFormat.compact(bytes(gb: 1023.9)) == "1023.9 GB")
+    #expect(MemoryFormat.string(bytes(gb: 1024)) == "1.00 TB")
+    #expect(MemoryFormat.compact(bytes(gb: 1024)) == "1.00 TB")
     #expect(MemoryFormat.string(bytes(gb: 2048)) == "2.00 TB")
     #expect(MemoryFormat.compact(bytes(gb: 2048)) == "2.00 TB")
     #expect(MemoryFormat.string(bytes(gb: 1286.4)) == "1.26 TB")
@@ -23,9 +25,10 @@ private func bytes(gb: Double) -> UInt64 { UInt64((gb * gib).rounded()) }
     #expect(MemoryFormat.compact(bytes(gb: 12 * 1024)) == "12.0 TB")
 }
 
-/// Values that would round up to "1000.0 GB" or "10.00 TB" take the next unit.
-@Test func byteFormatNeverPrintsFourDigitGigabytesOrTenPointZeroZeroTerabytes() {
-    #expect(MemoryFormat.compact(bytes(gb: 999.97)) == "0.98 TB")
-    #expect(MemoryFormat.string(bytes(gb: 999.97)) == "999.97 GB")
+/// Values that would round up to "1024.0 GB" or "10.00 TB" take the next unit,
+/// and a TB value never reads under "1.00 TB".
+@Test func byteFormatNeverPrintsSubOneTerabyteOrTenPointZeroZeroTerabytes() {
+    #expect(MemoryFormat.compact(bytes(gb: 1023.97)) == "1.00 TB")
+    #expect(MemoryFormat.string(bytes(gb: 1023.97)) == "1023.97 GB")
     #expect(MemoryFormat.string(bytes(gb: 10 * 1024 - 1)) == "10.0 TB")
 }
