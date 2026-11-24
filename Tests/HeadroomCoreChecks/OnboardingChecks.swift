@@ -99,10 +99,11 @@ private let support = URL(fileURLWithPath: "/nonexistent/Headroom", isDirectory:
         touch(url, ".codex/auth.json")
         #expect(QuotaSources.detectedNames(home: url) == ["Codex"])
         touch(url, ".claude/.credentials.json")
-        #expect(QuotaSources.detectedNames(home: url) == ["Codex", "Claude"])
+        #expect(QuotaSources.detectedNames(home: url) == ["Codex", "Claude (Claude Code — file)"])
         touch(url, AnteClaudeQuotaSource.executablePath, executable: true)
         touch(url, AnteClaudeQuotaSource.directory + "/work.json")
         touch(url, AnteClaudeQuotaSource.directory + "/personal.json")
         #expect(QuotaSources.detectedNames(home: url) == ["Codex", "Claude (Ante: personal, work)"])
+        #expect(QuotaSources.detect(home: url).claudeCodeHidden)
     }
 }

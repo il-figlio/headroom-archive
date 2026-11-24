@@ -63,7 +63,8 @@ public protocol QuotaSource: Sendable {
     /// Credential file(s) this source needs; used to skip sources with no
     /// sign-in before any network attempt is made.
     var credentialPaths: [String] { get }
-    /// True when at least one credential file exists on disk.
+    /// True when a sign-in exists. The default checks the credential files;
+    /// Claude also checks Claude Code's Keychain item (attributes only).
     func hasCredentials(home: URL) -> Bool
     /// Fetch a fresh reading. Implementations must return a reading even on
     /// failure (provider set, `error` describing what went wrong).
@@ -77,32 +78,101 @@ public extension QuotaSource {
 }
 
 /// All quota sources, in display order. A source only participates when its
-/// credentials exist on disk — nothing is fetched for providers the user
-/// doesn't use. `shared` returns the same instances every call so per-source
+/// sign-in exists (a credential file, or Claude Code's Keychain item while
+/// Keychain use is on) — nothing is fetched for providers the user doesn't
+/// use. `shared` returns the same instances every call so per-source
 /// last-good and rate-limit state survive between polls.
 public enum QuotaSources {
     public static let shared: [any QuotaSource] = [
         CodexQuotaSource(), ClaudeQuotaSource(),
     ]
-    /// Providers with usable credential files on this machine.
-    public static func credentialed(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> [any QuotaSource] {
-        let sources = shared.filter { $0.hasCredentials(home: home) }
-        // Named Ante accounts replace the Claude Code sign-in (product decision).
-        let ante = AnteClaudeQuotaSource.sources(home: home)
-        return ante.isEmpty ? sources : sources.filter { $0.provider != .claude } + ante
+
+    /// Sources to poll, and whether named Ante accounts are hiding Claude
+    /// Code's own sign-in.
+    public struct Selection {
+        public var sources: [any QuotaSource]
+        public var claudeCodeHidden: Bool
     }
-    /// Display names for Settings, e.g. ["Codex", "Claude (Ante: personal, work)"].
-    /// Built from file existence and file names only; nothing is opened.
-    public static func detectedNames(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> [String] {
-        let sources = credentialed(home: home)
+
+    /// Named Ante accounts replace the Claude Code source (product decision);
+    /// it isn't even probed then, so the Keychain is left alone.
+    static func select(home: URL, from candidates: [any QuotaSource],
+                       ante: [AnteClaudeQuotaSource]? = nil) -> Selection {
+        let ante = ante ?? AnteClaudeQuotaSource.sources(home: home)
+        let kept = candidates.filter { source in
+            if !ante.isEmpty, source is ClaudeQuotaSource { return false }
+            return source.hasCredentials(home: home)
+        }
+        return Selection(sources: kept + ante, claudeCodeHidden: !ante.isEmpty)
+    }
+
+    /// Providers with a usable sign-in on this machine.
+    public static func credentialed(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> [any QuotaSource] {
+        select(home: home, from: shared).sources
+    }
+
+    /// What Settings lists under "Sign-ins on this Mac".
+    public struct Detected: Equatable, Sendable {
+        /// e.g. ["Codex", "Claude (Claude Code — Keychain)"] or ["Claude (Ante: personal, work)"].
+        public var names: [String]
+        /// Named Ante accounts are in use, so Claude Code's own sign-in isn't shown.
+        public var claudeCodeHidden: Bool
+        public init(names: [String], claudeCodeHidden: Bool) {
+            self.names = names; self.claudeCodeHidden = claudeCodeHidden
+        }
+    }
+
+    /// Built from file existence, file names and Keychain item existence;
+    /// no file is opened and no secret is read.
+    public static func detect(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> Detected {
+        detect(home: home, from: shared)
+    }
+
+    static func detect(home: URL, from candidates: [any QuotaSource], ante: [AnteClaudeQuotaSource]? = nil) -> Detected {
+        let selection = select(home: home, from: candidates, ante: ante)
         var names: [String] = []
         for kind in [AgentKind.codex, .claude] {
-            let matching = sources.filter { $0.provider == kind }
-            guard !matching.isEmpty else { continue }
-            let accounts = matching.compactMap { ($0 as? AnteClaudeQuotaSource)?.account }
-            names.append(accounts.isEmpty ? kind.title : "\(kind.title) (Ante: \(accounts.joined(separator: ", ")))")
+            for source in selection.sources where source.provider == kind && !(source is AnteClaudeQuotaSource) {
+                if let claude = source as? ClaudeQuotaSource {
+                    let origins = claude.detectedOrigins(home: home)
+                    let ways = origins.compactMap { origin -> String? in
+                        switch origin {
+                        case .claudeFile: return "file"
+                        case .keychain: return "Keychain"
+                        case .anteFile: return nil
+                        }
+                    }
+                    if !ways.isEmpty { names.append("\(kind.title) (Claude Code — \(ways.joined(separator: ", ")))") }
+                    if origins.contains(.anteFile) { names.append("\(kind.title) (Ante)") }
+                } else {
+                    names.append(kind.title)
+                }
+            }
+            let accounts = selection.sources.compactMap { $0 as? AnteClaudeQuotaSource }.filter { $0.provider == kind }.map(\.account)
+            if !accounts.isEmpty { names.append("\(kind.title) (Ante: \(accounts.joined(separator: ", ")))") }
         }
-        return names
+        return Detected(names: names, claudeCodeHidden: selection.claudeCodeHidden)
+    }
+
+    /// Display names only; see `detect`.
+    public static func detectedNames(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> [String] {
+        detect(home: home).names
+    }
+
+    /// Asks the Claude Code source whether its sign-in changed since a
+    /// credential failure (metadata only; free when nothing failed).
+    public static func claudeSignInChanged(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> Bool {
+        shared.contains { ($0 as? ClaudeQuotaSource)?.noteSignInChange(home: home) == true }
+    }
+
+    /// Replaces the Claude Code reading's stale error while a retry runs.
+    public static func markClaudeSignInChanged(_ readings: [QuotaReading]) -> [QuotaReading] {
+        readings.map { reading in
+            guard reading.provider == .claude, reading.account == nil, reading.error != nil else { return reading }
+            var marked = reading
+            marked.error = ClaudeQuotaSource.signInChangedMessage
+            return marked
+        }
     }
 }
 

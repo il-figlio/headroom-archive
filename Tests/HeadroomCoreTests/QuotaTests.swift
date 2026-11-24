@@ -71,13 +71,13 @@ final class QuotaTests: XCTestCase {
     }
 
     func testClaudeCredentialsMissing() {
-        // Keychain fallback is process-global; the test home can't isolate it.
-        XCTAssertThrowsError(try ClaudeQuotaSource.readCredentials(home: home, allowKeychain: false))
+        // No Keychain passed: the real login Keychain is never consulted.
+        XCTAssertThrowsError(try ClaudeQuotaSource.readCredentials(home: home))
     }
 
     func testAnteOAuthFileNeedsNoKeychain() throws {
         write(".ante/auth/credentials/oauth/anthropic.json", #"{"access_token":"ante-token","refresh_token":"owned-by-ante","expires_at":"2099-01-01T00:00:00Z","scopes":["user:profile"]}"#)
-        let creds = try ClaudeQuotaSource.readCredentials(home: home, allowKeychain: false)
+        let creds = try ClaudeQuotaSource.readCredentials(home: home)
         XCTAssertEqual(creds.accessToken, "ante-token")
         XCTAssertNotNil(creds.expiresAt)
         XCTAssertEqual(QuotaSources.credentialed(home: home).map(\.provider), [.claude])
@@ -86,41 +86,41 @@ final class QuotaTests: XCTestCase {
     func testValidAnteCredentialsReplaceExpiredClaudeFile() throws {
         write(".claude/.credentials.json", #"{"claudeAiOauth":{"accessToken":"old","expiresAt":1}}"#)
         write(".ante/auth/credentials/oauth/anthropic.json", #"{"access_token":"fresh","expires_at":"2099-01-01T00:00:00.123456Z"}"#)
-        let creds = try ClaudeQuotaSource.readCredentials(home: home, allowKeychain: false)
+        let creds = try ClaudeQuotaSource.readCredentials(home: home)
         XCTAssertEqual(creds.accessToken, "fresh")
         XCTAssertNotNil(creds.expiresAt)
     }
 
     func testAnteCredentialsWithInvalidExpiryAreRejected() {
         write(".ante/auth/credentials/oauth/anthropic.json", #"{"access_token":"token","expires_at":"not-a-date"}"#)
-        XCTAssertThrowsError(try ClaudeQuotaSource.readCredentials(home: home, allowKeychain: false))
+        XCTAssertThrowsError(try ClaudeQuotaSource.readCredentials(home: home))
     }
 
     func testExpiredAnteCredentialsRemainUnchanged() async throws {
         let record = #"{"access_token":"expired","refresh_token":"owned-by-ante","expires_at":"2000-01-01T00:00:00Z"}"#
         write(".ante/auth/credentials/oauth/anthropic.json", record)
         let reading = await ClaudeQuotaSource().fetch(home: home)
-        XCTAssertTrue(reading.error?.contains("session expired") == true)
+        XCTAssertTrue(reading.error?.contains("sign-in expired") == true)
         XCTAssertEqual(try String(contentsOf: home.appendingPathComponent(".ante/auth/credentials/oauth/anthropic.json")), record)
     }
 
     func testClaudeKeychainConsentIsNotInteractive() {
-        var attempted = false
-        let credentials = ClaudeQuotaSource.readKeychain { query, _ in
-            attempted = true
+        let attempts = Counter()
+        let keychain = SystemClaudeKeychain { query, _ in
+            attempts.increment()
             let attributes = query as NSDictionary
             XCTAssertEqual(attributes[kSecUseAuthenticationUI] as? String, kSecUseAuthenticationUIFail as String)
             return errSecInteractionNotAllowed
         }
-        XCTAssertTrue(attempted)
-        XCTAssertNil(credentials)
+        XCTAssertEqual(keychain.readSecret(), .needsPrompt)
+        XCTAssertEqual(attempts.value, 1)
     }
 
     func testClaudeExpiredCredentialsRemainUnchanged() async throws {
         let record = #"{"claudeAiOauth":{"accessToken":"expired","refreshToken":"must-not-rotate","expiresAt":1}}"#
         write(".claude/.credentials.json", record)
         let reading = await ClaudeQuotaSource().fetch(home: home)
-        XCTAssertTrue(reading.error?.contains("session expired") == true)
+        XCTAssertTrue(reading.error?.contains("sign-in expired") == true)
         let stored = try String(contentsOf: home.appendingPathComponent(".claude/.credentials.json"))
         XCTAssertEqual(stored, record)
     }
@@ -179,7 +179,7 @@ final class QuotaTests: XCTestCase {
         XCTAssertEqual(reading.windows[0].label, "5h")
         XCTAssertEqual(reading.windows[0].usedFraction, 0.554, accuracy: 0.001)
         XCTAssertNotNil(reading.windows[0].resetsAt)
-        XCTAssertEqual(reading.windows[2].label, "Opus wk")
+        XCTAssertEqual(reading.windows[2].label, "Opus")
         XCTAssertEqual(reading.balance, "$434.43 of $600 extra usage")
     }
 
@@ -224,4 +224,11 @@ final class QuotaTests: XCTestCase {
         XCTAssertNotNil(readings.first?.windows.first?.resetsAt)
         XCTAssertTrue(readings.allSatisfy { $0.plan == "Max" && $0.error == nil })
     }
+}
+
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
+    func increment() { lock.lock(); count += 1; lock.unlock() }
 }

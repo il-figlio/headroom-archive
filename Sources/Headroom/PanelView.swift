@@ -8,6 +8,8 @@ import HeadroomCore
 /// measured against the rendered panel; overestimates land in the list
 /// (minHeight) instead of clipping the footer.
 enum PanelMetrics {
+    /// Main-thread mirror of the queue's last sign-in check; see MemoryMonitor.pollQuotas.
+    static var quotaSourcesPresent = false
     static let width: CGFloat = 400
     /// Default cap; the panel only grows past it when the visible cards
     /// plus the minimum app list need more and the screen has room.
@@ -52,10 +54,11 @@ enum PanelMetrics {
         if widgets.isVisible(.favorites), !FavoritesStore.shared.items.isEmpty { height += dock }
         if widgets.isVisible(.memory) || widgets.isVisible(.disk) { height += tilesRow }
         if widgets.isVisible(.agents) { height += agentsCard }
-        // Only costs height when Limits is on and provider credentials exist;
-        // with Limits off not even the credential files are checked.
+        // Only costs height when Limits is on and a sign-in was found. The
+        // sampling queue does that check (files and Keychain) and publishes
+        // the answer, so sizing never touches the disk or Keychain on main.
         if widgets.isVisible(.quota), AppPreferences.shared.limitsEnabled,
-           ScreenshotExport.active || !QuotaSources.credentialed().isEmpty { height += quotaCard }
+           ScreenshotExport.active || quotaSourcesPresent { height += quotaCard }
         return height
     }
 }

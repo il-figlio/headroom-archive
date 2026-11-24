@@ -132,7 +132,7 @@ private struct GeneralSettings: View {
 
 private struct LimitsSettings: View {
     @ObservedObject var preferences = AppPreferences.shared
-    @State private var detected: [String]?
+    @State private var detected: QuotaSources.Detected?
 
     var body: some View {
         Form {
@@ -141,17 +141,25 @@ private struct LimitsSettings: View {
                     Text("Show plan limits")
                     Text("Codex and Claude usage windows, checked every \(Int(QuotaPolicy.interval / 60)) minutes.")
                 }
+                Toggle(isOn: preferences.claudeKeychainBinding) {
+                    Text("Use Claude Code's Keychain sign-in")
+                    Text("Reads the 'Claude Code-credentials' item without ever showing a Keychain prompt.")
+                }.disabled(!preferences.limitsEnabled)
             } footer: {
                 Caption("When on, Headroom reads the sign-ins these tools saved on this Mac and asks the providers how much of your plan is used. These usage endpoints are unofficial and may change or stop working. Headroom never shows, copies, refreshes or writes your tokens.")
             }
             Section {
                 if let detected {
-                    if detected.isEmpty {
+                    if detected.names.isEmpty {
                         Text("No supported sign-ins found").foregroundStyle(.secondary)
                     } else {
-                        ForEach(detected, id: \.self) { name in
+                        ForEach(detected.names, id: \.self) { name in
                             Label(name, systemImage: "person.crop.circle").accessibilityLabel("Sign-in found: \(name)")
                         }
+                    }
+                    if detected.claudeCodeHidden {
+                        Text("Claude Code's own sign-in isn't shown while Ante accounts are in use.")
+                            .font(.callout).foregroundStyle(.secondary)
                     }
                 } else {
                     ProgressView().controlSize(.small)
@@ -159,18 +167,22 @@ private struct LimitsSettings: View {
             } header: {
                 Text("Sign-ins on this Mac")
             } footer: {
-                Caption("Found by checking which sign-in files exist. They're only opened while Limits is on.")
+                Caption("Found by checking which sign-in files exist and, while Limits and Keychain use are on, whether Claude Code's Keychain item exists. Sign-ins are only opened while Limits is on.")
             }
             Section {
                 Link("How Headroom handles your data", destination: AppBrand.privacyURL)
             }
         }.formStyle(.grouped)
-            .task { await detect() }
+            // Re-detect when either switch changes what may be checked.
+            .task(id: [preferences.limitsEnabled, preferences.claudeKeychainEnabled]) { await detect() }
     }
 
     private func detect() async {
-        if ScreenshotExport.active { detected = ["Codex", "Claude (Ante: personal, work)"]; return }
-        detected = await Task.detached(priority: .utility) { QuotaSources.detectedNames() }.value
+        if ScreenshotExport.active {
+            detected = .init(names: ["Codex", "Claude (Ante: personal, work)"], claudeCodeHidden: true)
+            return
+        }
+        detected = await Task.detached(priority: .utility) { QuotaSources.detect() }.value
     }
 }
 

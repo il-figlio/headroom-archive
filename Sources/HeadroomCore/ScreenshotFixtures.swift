@@ -80,6 +80,8 @@ public struct ScreenshotFixtures {
         personal.fetchedAt = now.addingTimeInterval(-4 * 60)
         personal.windows = [.init(label: "5h", usedFraction: 0.88, resetsAt: now.addingTimeInterval(-6 * 60)),
                             .init(label: "Week", usedFraction: 0.61, resetsAt: now.addingTimeInterval(2 * 24 * hour + 5 * hour)),
+                            .init(label: "Sonnet", usedFraction: 0.27, resetsAt: now.addingTimeInterval(2 * 24 * hour + 5 * hour),
+                                  detail: "Weekly limit for Sonnet models"),
                             .init(label: "Fable", usedFraction: 0.34, resetsAt: now.addingTimeInterval(4 * 24 * hour))]
         personal.balance = "$12.40 of $50 extra usage"
         var work = QuotaReading(provider: .claude)

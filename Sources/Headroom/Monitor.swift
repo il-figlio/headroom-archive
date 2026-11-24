@@ -149,6 +149,8 @@ final class MemoryMonitor: ObservableObject {
     /// rate-limits hard, and these windows move slowly anyway.
     private var lastQuotaFetchAt = Date.distantPast
     private var quotaFetchInFlight = false
+    /// Claude Code sign-in change checks (metadata only) run at most this often.
+    private var lastSignInCheckAt = Date.distantPast
     /// Instant display after relaunch; lives in our own Application Support dir.
     private static let quotaCacheURL = HistoryStore.defaultDirectory.appendingPathComponent("quota-cache.json")
     /// Burn window shown by the panel chart.
@@ -294,6 +296,7 @@ final class MemoryMonitor: ObservableObject {
                 self.changed?()
                 SamplingTrace.end(freshTrace)
             }
+            if limitsEnabled { self.checkClaudeSignIn(now: date) }
             let plan = SamplePlan.decide(now: date, lastRecordedAt: self.lastRecordedAt,
                                          recordedPressure: self.recordedPressure, freshPressure: memory.pressure,
                                          historyEnabled: historyEnabled, detailed: detailed,
@@ -500,7 +503,13 @@ final class MemoryMonitor: ObservableObject {
     /// display after relaunch.
     private func pollQuotas(now: Date) {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        guard !QuotaSources.credentialed(home: home).isEmpty else { return }
+        let present = !QuotaSources.credentialed(home: home).isEmpty
+        DispatchQueue.main.async {
+            guard PanelMetrics.quotaSourcesPresent != present else { return }
+            PanelMetrics.quotaSourcesPresent = present
+            PanelWidgets.shared.changed?()  // hosts resize to fit (or drop) the Limits card
+        }
+        guard present else { return }
         quotaFetchInFlight = true
         lastQuotaFetchAt = now
         Task.detached { [weak self] in
@@ -513,6 +522,21 @@ final class MemoryMonitor: ObservableObject {
                 return merged
             }
             self?.quotaFetchFinished(merged)
+        }
+    }
+    /// Queue-confined. After a Claude credential failure, a changed sign-in
+    /// file or Keychain item (modification dates only, never the secret)
+    /// replaces the stale error with "refreshing" and polls right away.
+    private func checkClaudeSignIn(now: Date) {
+        guard !quotaFetchInFlight else { return }
+        let elapsed = now.timeIntervalSince(lastSignInCheckAt)
+        guard elapsed < 0 || elapsed >= 60 else { return }
+        lastSignInCheckAt = now
+        guard QuotaSources.claudeSignInChanged() else { return }
+        lastQuotaFetchAt = .distantPast
+        DispatchQueue.main.async {
+            guard AppPreferences.shared.limitsEnabled else { return }
+            self.quotas = QuotaSources.markClaudeSignInChanged(self.quotas)
         }
     }
     /// Back on `queue`: cache the merged set, then allow the next poll.
