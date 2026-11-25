@@ -1,5 +1,7 @@
 # Contributing to Headroom
 
+By taking part you agree to the [code of conduct](CODE_OF_CONDUCT.md).
+
 Thanks for taking a look. Headroom aims to stay small, honest, and cheap to
 run, so changes are welcome when they keep it that way. For a larger change,
 please open an issue first so we can agree on the approach.
